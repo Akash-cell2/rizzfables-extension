@@ -5,6 +5,7 @@ import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.model.SMangaUpdate
 import keiyoushi.annotation.Source
 import keiyoushi.network.get
 import keiyoushi.source.KeiSource
@@ -17,7 +18,8 @@ abstract class RizzFables : KeiSource() {
     override suspend fun getPopularManga(page: Int): MangasPage {
         val document = client.get("$baseUrl/manga-list").asJsoup()
 
-        val mangas = document.select("a[href*='/series/']")
+        val mangas = document
+            .select("a[href*='/series/']")
             .mapNotNull { parseManga(it) }
             .distinctBy { it.url }
 
@@ -27,7 +29,8 @@ abstract class RizzFables : KeiSource() {
     override suspend fun getLatestUpdates(page: Int): MangasPage {
         val document = client.get(baseUrl).asJsoup()
 
-        val mangas = document.select("a[href*='/series/']")
+        val mangas = document
+            .select("a[href*='/series/']")
             .mapNotNull { parseManga(it) }
             .distinctBy { it.url }
 
@@ -39,11 +42,13 @@ abstract class RizzFables : KeiSource() {
         query: String,
         filters: FilterList,
     ): MangasPage {
-        val url = "$baseUrl/Index/live_search?search_value=${query.trim().replace(" ", "+")}"
+        val searchUrl =
+            "$baseUrl/Index/live_search?search_value=${query.trim().replace(" ", "+")}"
 
-        val document = client.get(url).asJsoup()
+        val document = client.get(searchUrl).asJsoup()
 
-        val mangas = document.select("a[href*='/series/']")
+        val mangas = document
+            .select("a[href*='/series/']")
             .mapNotNull { parseManga(it) }
             .distinctBy { it.url }
 
@@ -52,13 +57,18 @@ abstract class RizzFables : KeiSource() {
 
     private fun parseManga(element: Element): SManga? {
         val href = element.absUrl("href")
-        if (href.isBlank()) return null
+
+        if (href.isBlank()) {
+            return null
+        }
 
         val title = element.selectFirst(".autotitle")?.text()
             ?: element.selectFirst("img")?.attr("alt")
             ?: element.text()
 
-        if (title.isBlank()) return null
+        if (title.isBlank()) {
+            return null
+        }
 
         return SManga.create().apply {
             url = href.removePrefix(baseUrl)
@@ -76,7 +86,9 @@ abstract class RizzFables : KeiSource() {
         val document = client.get(getMangaUrl(manga)).asJsoup()
 
         val updatedManga = manga.apply {
-            title = document.selectFirst("h1.entry-title, .entry-title")?.text()
+            title = document
+                .selectFirst("h1.entry-title, .entry-title")
+                ?.text()
                 ?: title
 
             thumbnail_url = document
@@ -99,15 +111,14 @@ abstract class RizzFables : KeiSource() {
 
             genre = document
                 .select(".genres-content a")
-                .joinToString { it.text() }
+                .joinToString(", ") { it.text() }
+
+            val pageText = document.text().lowercase()
 
             status = when {
-                document.text().contains("Completed", ignoreCase = true) ->
-                    SManga.COMPLETED
-                document.text().contains("Ongoing", ignoreCase = true) ->
-                    SManga.ONGOING
-                else ->
-                    SManga.UNKNOWN
+                "completed" in pageText -> SManga.COMPLETED
+                "ongoing" in pageText -> SManga.ONGOING
+                else -> SManga.UNKNOWN
             }
         }
 
@@ -124,10 +135,16 @@ abstract class RizzFables : KeiSource() {
 
     private fun parseChapter(element: Element): SChapter? {
         val href = element.absUrl("href")
-        if (href.isBlank()) return null
+
+        if (href.isBlank()) {
+            return null
+        }
 
         val title = element.text()
-        if (title.isBlank()) return null
+
+        if (title.isBlank()) {
+            return null
+        }
 
         val number = Regex(
             """chapter\s*([0-9]+(?:\.[0-9]+)?)""",
@@ -152,14 +169,14 @@ abstract class RizzFables : KeiSource() {
         return document
             .select("#readerarea img")
             .mapIndexedNotNull { index, image ->
-                val url = image.absUrl("src")
+                val imageUrl = image.absUrl("src")
 
-                if (url.isBlank()) {
+                if (imageUrl.isBlank()) {
                     null
                 } else {
                     Page(
                         index = index,
-                        imageUrl = url,
+                        imageUrl = imageUrl,
                     )
                 }
             }
@@ -176,10 +193,13 @@ abstract class RizzFables : KeiSource() {
 
         val manga = SManga.create().apply {
             this.url = url.encodedPath
-            title = url.pathSegments.last()
-                .removePrefix("r2311170-")
-                .replace("-", " ")
-                .replaceFirstChar { it.uppercase() }
+
+            title = url.pathSegments
+                .lastOrNull()
+                ?.removePrefix("r2311170-")
+                ?.replace("-", " ")
+                ?.replaceFirstChar { it.uppercase() }
+                ?: return@apply
         }
 
         return fetchMangaUpdate(
