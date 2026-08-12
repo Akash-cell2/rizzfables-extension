@@ -1,15 +1,22 @@
-package eu.kanade.tachiyomi.extension.en.rizzfables
+import io.github.keiyoushi.gradle.api.ContentWarning
 
-import eu.kanade.tachiyomi.source.model.FilterList
-import eu.kanade.tachiyomi.source.model.MangasPage
-import eu.kanade.tachiyomi.source.model.Page
-import eu.kanade.tachiyomi.source.model.SChapter
-import eu.kanade.tachiyomi.source.model.SManga
-import keiyoushi.annotation.Source
-import keiyoushi.network.get
-import keiyoushi.source.KeiSource
-import okhttp3.HttpUrl
-import org.jsoup.nodes.Element
+plugins {
+    alias(kei.plugins.extension)
+}
 
-@Source
-abstract class RizzFables : KeiSource() {
+keiyoushi {
+    name = "Rizz Fables"
+    versionCode = 1
+    contentWarning = ContentWarning.SAFE
+    libVersion = "1.6"
+
+    source {
+        lang = "en"
+        baseUrl = "https://rizzfables.com"
+    }
+
+    deeplink {
+        path("/series/..*")
+        path("/chapter/..*")
+    }
+}
