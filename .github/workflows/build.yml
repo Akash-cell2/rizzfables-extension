@@ -1,0 +1,43 @@
+name: Build Rizz Fables Extension
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Clone Keiyoushi extension source
+        run: |
+          git clone --depth 1 https://github.com/keiyoushi/extensions-source.git build-source
+
+      - name: Copy Rizz Fables source
+        run: |
+          mkdir -p build-source/src/en/rizzfables
+          cp -r src/en/rizzfables/* build-source/src/en/rizzfables/
+
+      - name: Build extension
+        working-directory: build-source
+        run: ./gradlew :src:en:rizzfables:assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rizzfables-extension
+          path: build-source/src/en/rizzfables/build/outputs/apk/**/*.apk
