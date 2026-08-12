@@ -43,6 +43,7 @@ abstract class RizzFables : KeiSource() {
         filters: FilterList,
     ): MangasPage {
         val searchQuery = query.trim().replace(" ", "+")
+
         val url = "$baseUrl/Index/live_search?search_value=$searchQuery"
 
         val document = client.get(url).asJsoup()
@@ -58,13 +59,17 @@ abstract class RizzFables : KeiSource() {
     private fun parseManga(element: Element): SManga? {
         val href = element.absUrl("href")
 
-        if (href.isBlank()) return null
+        if (href.isBlank()) {
+            return null
+        }
 
         val title = element.selectFirst(".autotitle")?.text()
             ?: element.selectFirst("img")?.attr("alt")
             ?: element.text()
 
-        if (title.isBlank()) return null
+        if (title.isBlank()) {
+            return null
+        }
 
         return SManga.create().apply {
             url = href.removePrefix(baseUrl)
@@ -132,11 +137,15 @@ abstract class RizzFables : KeiSource() {
     private fun parseChapter(element: Element): SChapter? {
         val href = element.absUrl("href")
 
-        if (href.isBlank()) return null
+        if (href.isBlank()) {
+            return null
+        }
 
         val title = element.text().trim()
 
-        if (title.isBlank()) return null
+        if (title.isBlank()) {
+            return null
+        }
 
         val number = Regex(
             """chapter\s*([0-9]+(?:\.[0-9]+)?)""",
@@ -186,8 +195,7 @@ abstract class RizzFables : KeiSource() {
         val manga = SManga.create().apply {
             this.url = url.encodedPath
 
-            title = url.pathSegments
-                .last()
+            title = url.pathSegments.last()
                 .removePrefix("r2311170-")
                 .replace("-", " ")
                 .replaceFirstChar { it.uppercase() }
